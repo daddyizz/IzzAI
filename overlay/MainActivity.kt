@@ -197,10 +197,13 @@ class MainActivity : AppCompatActivity() {
         updateButtons()
         setStatus("Memuatkan ${file.name}…")
         try {
-            withContext(Dispatchers.Default) { engine.loadModel(file.absolutePath) }
+            withContext(Dispatchers.Default) {
+                engine.loadModel(file.absolutePath)
+                engine.setSystemPrompt("You are IzzAI, a helpful offline Android assistant. Always answer directly in Bahasa Melayu Malaysia, not Bahasa Indonesia, unless the user requests another language. Use Malaysian vocabulary and spelling. Keep answers concise and factual. Do not output chain-of-thought or internal reasoning. /no_think")
+            }
             getPreferences(MODE_PRIVATE).edit().putString("model_path", file.absolutePath).apply()
             modelReady = true
-            setStatus("● Offline • ${file.name}")
+            setStatus("● Model lokal • ${file.name}")
         } catch (e: Exception) {
             setStatus("Model gagal dimuatkan: ${e.message}")
         } finally {
@@ -223,7 +226,7 @@ class MainActivity : AppCompatActivity() {
             val raw = StringBuilder()
             try {
                 withContext(Dispatchers.Default) {
-                    engine.sendUserPrompt("$message\n/no_think", 512).collect { token ->
+                    engine.sendUserPrompt("/no_think\n$message\nJawab terus dalam Bahasa Melayu Malaysia tanpa penerangan proses berfikir.", 1024).collect { token ->
                         raw.append(token)
                         val clean = cleanThinking(raw.toString())
                         withContext(Dispatchers.Main) {
@@ -238,7 +241,7 @@ class MainActivity : AppCompatActivity() {
                     raw.isNotBlank() -> "Model menjana teks tetapi tiada jawapan akhir. Output diagnostik:\n${raw.toString().take(2500)}"
                     else -> "Model tidak menghasilkan token. Sila laporkan mesej ini untuk diagnosis enjin."
                 }
-                setStatus("● Offline • ${raw.length} aksara dihasilkan")
+                setStatus("● Model lokal • ${raw.length} aksara dihasilkan")
             } catch (e: Exception) {
                 items[items.lastIndex] = false to "Ralat inferens (${e.javaClass.simpleName}): ${e.message}"
                 setStatus("Inferens gagal: ${e.message}")
