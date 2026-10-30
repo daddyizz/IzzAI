@@ -6,11 +6,16 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
+import android.view.WindowManager
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.arm.aichat.AiChat
 import com.arm.aichat.InferenceEngine
@@ -43,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var send: Button
     private lateinit var importButton: Button
     private lateinit var clearButton: Button
+    private lateinit var composeBar: LinearLayout
     private val items = mutableListOf<Pair<Boolean, String>>()
     private val store by lazy { File(filesDir, "conversation.json") }
     private val models by lazy { File(filesDir, "models").apply { mkdirs() } }
@@ -53,8 +59,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = bg
         window.navigationBarColor = bg
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         buildUi()
         loadHistory()
         renderHistory()
@@ -110,14 +118,21 @@ class MainActivity : AppCompatActivity() {
         tools.addView(importButton, LinearLayout.LayoutParams(0, dp(44), 1f))
         tools.addView(clearButton, LinearLayout.LayoutParams(0, dp(44), 1f).apply { leftMargin = dp(8) })
         root.addView(tools)
-        scroll = ScrollView(this).apply { isFillViewport = true }
+        scroll = ScrollView(this).apply {
+            isFillViewport = true
+            clipToPadding = false
+        }
         conversation = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(12), 0, dp(12))
         }
         scroll.addView(conversation)
         root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        val compose = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.BOTTOM }
+        composeBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.BOTTOM
+            setBackgroundColor(bg)
+        }
         input = EditText(this).apply {
             hint = "Tanya IzzAI…"
             setHintTextColor(muted)
@@ -126,12 +141,14 @@ class MainActivity : AppCompatActivity() {
             minLines = 1
             maxLines = 4
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setPadding(dp(12), dp(12), dp(12), dp(12))
             backgroundTintList = android.content.res.ColorStateList.valueOf(accent)
         }
-        compose.addView(input, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        composeBar.addView(input, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         send = makeButton("Hantar", accent).apply { setOnClickListener { submit() } }
-        compose.addView(send, LinearLayout.LayoutParams(dp(92), dp(48)).apply { leftMargin = dp(8) })
-        root.addView(compose)
+        composeBar.addView(send, LinearLayout.LayoutParams(dp(92), dp(48)).apply { leftMargin = dp(8) })
+        root.addView(composeBar)
+        applyInsets(root)
         updateButtons()
     }
 
@@ -297,6 +314,27 @@ class MainActivity : AppCompatActivity() {
             clearButton.isEnabled = !busy
         }
     }
+
+    private fun applyInsets(root: View) {
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val bottomInset = maxOf(bars.bottom, ime.bottom)
+
+            root.updatePadding(
+                left = dp(16),
+                top = bars.top + dp(14),
+                right = dp(16),
+                bottom = dp(12)
+            )
+
+            composeBar.updatePadding(bottom = bottomInset + dp(8))
+            scroll.updatePadding(bottom = dp(12))
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
+    }
+
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
