@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity() {
             text = "IzzAI"
             textSize = 23f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(foreground)
+            setTextColor(this@MainActivity.foreground)
         }
         root.addView(heading)
         status = TextView(this).apply {
@@ -121,7 +121,7 @@ class MainActivity : AppCompatActivity() {
         input = EditText(this).apply {
             hint = "Tanya IzzAI…"
             setHintTextColor(muted)
-            setTextColor(foreground)
+            setTextColor(this@MainActivity.foreground)
             textSize = 14f
             minLines = 1
             maxLines = 4
@@ -255,7 +255,7 @@ class MainActivity : AppCompatActivity() {
             val bubble = TextView(this).apply {
                 text = body
                 textSize = 14f
-                setTextColor(foreground)
+                setTextColor(this@MainActivity.foreground)
                 setBackgroundColor(if (user) Color.rgb(35, 70, 68) else panel)
                 setPadding(dp(12), dp(11), dp(12), dp(11))
             }
