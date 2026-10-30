@@ -218,23 +218,30 @@ class MainActivity : AppCompatActivity() {
         items += false to "Sedang menjawab…"
         renderHistory()
         saveHistory()
-        updateButtons()
+        setStatus("Menjana jawapan offline…")
         generation = lifecycleScope.launch {
             val raw = StringBuilder()
             try {
                 withContext(Dispatchers.Default) {
-                    engine.sendUserPrompt(message).collect { token ->
+                    engine.sendUserPrompt("$message\n/no_think", 512).collect { token ->
                         raw.append(token)
                         val clean = cleanThinking(raw.toString())
                         withContext(Dispatchers.Main) {
-                            items[items.lastIndex] = false to (clean.ifBlank { "Sedang menjawab…" })
+                            items[items.lastIndex] = false to (clean.ifBlank { "Sedang menjawab… (${raw.length} aksara diterima)" })
                             renderHistory()
                         }
                     }
                 }
-                items[items.lastIndex] = false to cleanThinking(raw.toString()).ifBlank { "(Tiada respons)" }
+                val filtered = cleanThinking(raw.toString())
+                items[items.lastIndex] = false to when {
+                    filtered.isNotBlank() -> filtered
+                    raw.isNotBlank() -> "Model menjana teks tetapi tiada jawapan akhir. Output diagnostik:\n${raw.toString().take(2500)}"
+                    else -> "Model tidak menghasilkan token. Sila laporkan mesej ini untuk diagnosis enjin."
+                }
+                setStatus("● Offline • ${raw.length} aksara dihasilkan")
             } catch (e: Exception) {
-                items[items.lastIndex] = false to "Ralat inferens: ${e.message}"
+                items[items.lastIndex] = false to "Ralat inferens (${e.javaClass.simpleName}): ${e.message}"
+                setStatus("Inferens gagal: ${e.message}")
             } finally {
                 renderHistory()
                 saveHistory()
