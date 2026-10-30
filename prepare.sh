@@ -35,5 +35,26 @@ PY
 # Android sample project lives within repo; point its CMake relative path to source tree.
 # Keep entire native tree available adjacent to Android project.
 ln -sfn "$UPSTREAM" "$ROOT/llama.cpp"
+# Fix upstream Android chat formatting for Qwen3 model-specific templates.
+# The upstream sample only formats when a template was explicitly supplied,
+# which skips a GGUF embedded template. Qwen3 then defaults to thinking.
+python3 - "$ROOT/android/lib/src/main/cpp/ai_chat.cpp" <<'PYQWEN'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+old = "const bool has_chat_template = common_chat_templates_was_explicit(g_chat_templates.get());"
+assert s.count(old) == 2, "Unexpected llama.cpp template logic"
+s = s.replace(old, "const bool has_chat_template = true;")
+old = "formatted_user_prompt = chat_add_and_format(ROLE_USER, user_prompt);"
+assert s.count(old) == 1, "Unexpected user chat formatting"
+# Official Qwen3 nonthinking assistant prefill, appended to formatted generation prompt.
+s = s.replace(old, old + '\n        formatted_user_prompt += "<think>\\n\\n</think>\\n\\n";')
+old = "stop_generation_position = current_position + user_prompt_size + n_predict;"
+assert s.count(old) == 1, "Unexpected token limit logic"
+s = s.replace(old, "stop_generation_position = current_position + n_predict;")
+p.write_text(s)
+print("Patched Qwen3 chat template and non-thinking assistant prefill")
+PYQWEN
 echo "Prepared android/ using llama.cpp $SHA."
 echo "Run: cd android && bash gradlew assembleDebug"
