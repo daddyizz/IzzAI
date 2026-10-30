@@ -1,0 +1,30 @@
+name: Build IzzAI APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Prepare upstream native engine
+        run: bash prepare.sh
+      - name: Build APK
+        working-directory: android
+        run: bash gradlew assembleDebug --stacktrace
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: IzzAI-v0.2-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
