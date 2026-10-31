@@ -50,7 +50,7 @@ old = "formatted_user_prompt = chat_add_and_format(ROLE_USER, user_prompt);"
 assert s.count(old) == 1, "Unexpected user chat formatting"
 # Only prepend Qwen3 nonthinking assistant tokens when the GGUF architecture is qwen3.
 # Qwen2.5-3B Instruct must use its own chat template, without Qwen3 tokens.
-s = s.replace(old, old + '\n        if (std::string(llama_model_arch_name(g_model)) == "qwen3") {\n            formatted_user_prompt += "<think>\\n\\n</think>\\n\\n";\n        }')
+s = s.replace(old, old + '\n        char model_arch[64] = {};\n        llama_model_meta_val_str(g_model, "general.architecture", model_arch, sizeof(model_arch));\n        if (std::string(model_arch) == "qwen3") {\n            formatted_user_prompt += "<think>\\n\\n</think>\\n\\n";\n        }')
 old = "stop_generation_position = current_position + user_prompt_size + n_predict;"
 assert s.count(old) == 1, "Unexpected token limit logic"
 s = s.replace(old, "stop_generation_position = current_position + n_predict;")
