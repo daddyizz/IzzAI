@@ -54,6 +54,9 @@ s = s.replace(old, old + '\n        char model_arch[64] = {};\n        llama_mod
 old = "stop_generation_position = current_position + user_prompt_size + n_predict;"
 assert s.count(old) == 1, "Unexpected token limit logic"
 s = s.replace(old, "stop_generation_position = current_position + n_predict;")
+old_temp = "constexpr float DEFAULT_SAMPLER_TEMP    = 0.3f;"
+assert old_temp in s, "Native sampler definition changed"
+s = s.replace(old_temp, "constexpr float DEFAULT_SAMPLER_TEMP    = 0.0f;")
 old_ctx = "constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;"
 assert old_ctx in s, "Native context definition changed"
 s = s.replace(old_ctx, "constexpr int   DEFAULT_CONTEXT_SIZE    = 4096;")
