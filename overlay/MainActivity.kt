@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
     private val foreground = Color.rgb(239, 243, 249)
     private val muted = Color.rgb(159, 173, 191)
 
-    private val systemInstruction = "You are IzzAI, a helpful offline assistant. Answer ONLY the most recent user question, directly and precisely. Do not repeat answers to previous questions. Use previous turns only when the current question refers to them. Reply in natural Bahasa Melayu Malaysia. For factual questions, provide the specific fact, not a restatement of the question. If genuinely uncertain, say so. Do not reveal internal reasoning."
+    private val systemInstruction = "You are IzzAI, an offline assistant. Reply in natural Bahasa Melayu Malaysia. Answer the latest question directly using your general knowledge for general-knowledge questions. Use previous conversation only for follow-up questions and user-provided facts. Conversation history is not a factual reference source; prior assistant responses can be incorrect. Never claim that general knowledge is unavailable merely because it is absent from conversation history. If the question is ambiguous, ask a concise clarifying question. Avoid inventing facts, food names, places, or prices. For ages without a birthday, give the possible birth-year range. Express uncertainty when necessary. Do not reveal internal reasoning."
     private lateinit var engine: InferenceEngine
     private var initialized = false
     private var modelReady = false
@@ -264,7 +264,8 @@ class MainActivity : AppCompatActivity() {
         val sessionInstruction = if (previousTurns.isBlank()) systemInstruction else
             systemInstruction +
             "\n\nBerikut ialah sejarah sebenar sesi ini. Gunakan fakta yang diberikan pengguna " +
-            "untuk menjawab soalan susulan. Jangan kata tidak tahu jika jawapan ada dalam sejarah." +
+            "untuk menjawab soalan susulan tentang chat sahaja. Untuk pengetahuan am, " +
+            "gunakan pengetahuan umum model. Jawapan AI terdahulu mungkin salah." +
             "\nSEJARAH:\n" + previousTurns + "\nTAMAT SEJARAH."
         items += true to message
         items += false to "Sedang menjawab…"
