@@ -56,10 +56,10 @@ assert s.count(old) == 1, "Unexpected token limit logic"
 s = s.replace(old, "stop_generation_position = current_position + n_predict;")
 # When starting a new conversation, the existing system-prompt native entry point
 # clears llama KV state and conversation history. Also reset sampler token history.
-old_system = "reset_long_term_states();\\n    reset_short_term_states();"
+old_system = "reset_long_term_states();\n    reset_short_term_states();"
 assert s.count(old_system) >= 1, "Native system prompt reset block changed"
 s = s.replace(old_system,
-              "reset_long_term_states();\\n    reset_short_term_states();\\n    common_sampler_reset(g_sampler);", 1)
+              "reset_long_term_states();\n    reset_short_term_states();\n    common_sampler_reset(g_sampler);", 1)
 old_temp = "constexpr float DEFAULT_SAMPLER_TEMP    = 0.3f;"
 assert old_temp in s, "Native sampler definition changed"
 s = s.replace(old_temp, "constexpr float DEFAULT_SAMPLER_TEMP    = 0.0f;")
