@@ -381,6 +381,14 @@ class MainActivity : AppCompatActivity() {
         if (!::send.isInitialized) return
         runOnUiThread {
             val busy = loading || generation?.isActive == true
+            // Block text editing / long-press Paste while the GGUF model is loading.
+            // Leave typing available during generation; only sending is blocked.
+            input.isEnabled = modelReady && !loading
+            input.hint = when {
+                loading -> "Memuatkan model GGUF…"
+                !modelReady -> "Import GGUF untuk mula berbual"
+                else -> "Tanya IzzAI…"
+            }
             send.isEnabled = modelReady && !busy
             importButton.isEnabled = initialized && !busy
             clearButton.isEnabled = !busy
