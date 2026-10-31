@@ -65,9 +65,9 @@ assert old_temp in s, "Native sampler definition changed"
 s = s.replace(old_temp, "constexpr float DEFAULT_SAMPLER_TEMP    = 0.0f;")
 old_ctx = "constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;"
 assert old_ctx in s, "Native context definition changed"
-s = s.replace(old_ctx, "constexpr int   DEFAULT_CONTEXT_SIZE    = 4096;")
+s = s.replace(old_ctx, "constexpr int   DEFAULT_CONTEXT_SIZE    = 2048;")
 p.write_text(s)
-print("Patched Qwen chat templates, corrected token limit and 4096-token context")
+print("Patched Qwen chat templates, corrected token limit and 2048-token context")
 
 PYQWEN
 # Permit changing the system prompt between completed generations.
