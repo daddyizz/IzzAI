@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
     private val foreground = Color.rgb(239, 243, 249)
     private val muted = Color.rgb(159, 173, 191)
 
-    private val systemInstruction = "You are IzzAI, an offline assistant. Reply accurately in Bahasa Melayu Malaysia, not Indonesian. Keep answers concise. Admit uncertainty. No internal reasoning."
+    private val systemInstruction = "You are IzzAI, a helpful offline assistant. Answer ONLY the most recent user question, directly and precisely. Do not repeat answers to previous questions. Use previous turns only when the current question refers to them. Reply in natural Bahasa Melayu Malaysia. For factual questions, provide the specific fact, not a restatement of the question. If genuinely uncertain, say so. Do not reveal internal reasoning."
     private lateinit var engine: InferenceEngine
     private var initialized = false
     private var modelReady = false
