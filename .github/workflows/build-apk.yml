@@ -9,8 +9,22 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+    env:
+      IZZAI_KEYSTORE_PATH: ${{ github.workspace }}/izzai-test-signing.jks
+      IZZAI_SIGNING_PASSWORD: ${{ secrets.IZZAI_SIGNING_PASSWORD }}
+      IZZAI_KEYSTORE_B64: ${{ secrets.IZZAI_KEYSTORE_B64 }}
     steps:
       - uses: actions/checkout@v4
+      - name: Restore persistent test signing keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$IZZAI_SIGNING_PASSWORD" || { echo "::error::Set IZZAI_SIGNING_PASSWORD secret"; exit 1; }
+          test -n "$IZZAI_KEYSTORE_B64" || { echo "::error::Set IZZAI_KEYSTORE_B64 secret"; exit 1; }
+          printf '%s' "$IZZAI_KEYSTORE_B64" | base64 --decode > "$IZZAI_KEYSTORE_PATH"
+          chmod 600 "$IZZAI_KEYSTORE_PATH"
+          keytool -list -keystore "$IZZAI_KEYSTORE_PATH" -storepass "$IZZAI_SIGNING_PASSWORD" -alias izzai-test >/dev/null
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -33,6 +47,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: IzzAI-v0.3.6-test-debug
+          name: IzzAI-test-signed
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
