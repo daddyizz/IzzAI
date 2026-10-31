@@ -3,6 +3,7 @@ package com.example.llama
 import android.graphics.Color
 import android.graphics.Typeface
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
@@ -36,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private val foreground = Color.rgb(239, 243, 249)
     private val muted = Color.rgb(159, 173, 191)
 
+    private val systemInstruction = "You are IzzAI, an offline assistant. Reply accurately in Bahasa Melayu Malaysia, not Indonesian. Keep answers concise. Admit uncertainty. No internal reasoning."
     private lateinit var engine: InferenceEngine
     private var initialized = false
     private var modelReady = false
@@ -110,9 +112,31 @@ class MainActivity : AppCompatActivity() {
         clearButton = makeButton("Chat baharu", muted).apply {
             setOnClickListener {
                 if (generation?.isActive == true) return@setOnClickListener
-                items.clear()
-                saveHistory()
-                renderHistory()
+                if (!modelReady || loading) return@setOnClickListener
+                val path = getPreferences(MODE_PRIVATE).getString("model_path", null) ?: return@setOnClickListener
+                loading = true
+                updateButtons()
+                setStatus("Memulakan sesi baharu…")
+                lifecycleScope.launch {
+                    try {
+                        withContext(Dispatchers.Default) {
+                            engine.cleanUp()
+                            engine.loadModel(path)
+                            engine.setSystemPrompt(systemInstruction)
+                        }
+                        items.clear()
+                        saveHistory()
+                        renderHistory()
+                        modelReady = true
+                        setStatus("● Sesi baharu • ${File(path).name}")
+                    } catch (e: Exception) {
+                        modelReady = false
+                        setStatus("Reset gagal: ${e.message}")
+                    } finally {
+                        loading = false
+                        updateButtons()
+                    }
+                }
             }
         }
         tools.addView(importButton, LinearLayout.LayoutParams(0, dp(44), 1f))
@@ -167,7 +191,17 @@ class MainActivity : AppCompatActivity() {
         setStatus("Menyalin model ke storan aplikasi…")
         lifecycleScope.launch {
             try {
-                val target = File(models, "izzai-model.gguf")
+                val originalName = contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                } ?: "imported-model.gguf"
+                val safeName = originalName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+                    .replace(Regex("(?i)\\.txt$"), ".gguf")
+                    .let { if (it.endsWith(".gguf", ignoreCase = true)) it else "${it}.gguf" }
+                val target = File(models, safeName)
+                if (modelReady) {
+                    withContext(Dispatchers.Default) { engine.cleanUp() }
+                    modelReady = false
+                }
                 withContext(Dispatchers.IO) {
                     val temp = File(models, "izzai-model.tmp")
                     try {
@@ -199,7 +233,7 @@ class MainActivity : AppCompatActivity() {
         try {
             withContext(Dispatchers.Default) {
                 engine.loadModel(file.absolutePath)
-                engine.setSystemPrompt("You are IzzAI, a helpful offline Android assistant. Always answer directly in Bahasa Melayu Malaysia, not Bahasa Indonesia, unless the user requests another language. Use Malaysian vocabulary and spelling. Keep answers concise and factual. Do not output chain-of-thought or internal reasoning. /no_think")
+                engine.setSystemPrompt(systemInstruction)
             }
             getPreferences(MODE_PRIVATE).edit().putString("model_path", file.absolutePath).apply()
             modelReady = true
@@ -216,6 +250,7 @@ class MainActivity : AppCompatActivity() {
         if (!modelReady || loading || generation?.isActive == true) return
         val message = input.text.toString().trim()
         if (message.isEmpty()) return
+        val priorFacts = items.filter { it.first }.takeLast(5).joinToString("\n") { it.second }
         input.setText("")
         items += true to message
         items += false to "Sedang menjawab…"
@@ -226,7 +261,11 @@ class MainActivity : AppCompatActivity() {
             val raw = StringBuilder()
             try {
                 withContext(Dispatchers.Default) {
-                    engine.sendUserPrompt("/no_think\n$message\nJawab terus dalam Bahasa Melayu Malaysia tanpa penerangan proses berfikir.", 1024).collect { token ->
+                    engine.sendUserPrompt(
+                        "Maklumat pengguna terdahulu (jika berkaitan):\n$priorFacts\n" +
+                        "Soalan terkini: $message\nJawab terus dalam Bahasa Melayu Malaysia.",
+                        768
+                    ).collect { token ->
                         raw.append(token)
                         val clean = cleanThinking(raw.toString())
                         withContext(Dispatchers.Main) {
