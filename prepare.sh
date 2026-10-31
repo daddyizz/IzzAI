@@ -54,8 +54,12 @@ s = s.replace(old, old + '\n        char model_arch[64] = {};\n        llama_mod
 old = "stop_generation_position = current_position + user_prompt_size + n_predict;"
 assert s.count(old) == 1, "Unexpected token limit logic"
 s = s.replace(old, "stop_generation_position = current_position + n_predict;")
+old_ctx = "constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;"
+assert old_ctx in s, "Native context definition changed"
+s = s.replace(old_ctx, "constexpr int   DEFAULT_CONTEXT_SIZE    = 4096;")
 p.write_text(s)
-print("Patched Qwen3 chat template and non-thinking assistant prefill")
+print("Patched Qwen chat templates, corrected token limit and 4096-token context")
+
 PYQWEN
 echo "Prepared android/ using llama.cpp $SHA."
 echo "Run: cd android && bash gradlew assembleDebug"
