@@ -252,17 +252,20 @@ class MainActivity : AppCompatActivity() {
         val message = input.text.toString().trim()
         if (message.isEmpty()) return
         input.setText("")
-        // Include a small, bounded window of previous turns explicitly.
-        // Native context alone is not reliable across restored sessions or model reloads.
+        // Rebuild the native context from the UI conversation each turn.
+        // The llama.cpp sample maintains a separate chat/KV history that can
+        // diverge from restored Android messages. Keep one bounded source.
         val previousTurns = items.takeLast(8).filter { (user, body) ->
-            user || (body.isNotBlank() && !body.startsWith("Ralat inferens") && body != "Sedang menjawab…")
+            user || (body.isNotBlank() && !body.startsWith("Ralat inferens") &&
+                body != "Sedang menjawab…" && !body.startsWith("Model tidak menghasilkan"))
         }.map { (user, body) ->
             (if (user) "Pengguna: " else "IzzAI: ") + body.take(300)
         }.joinToString("\n").takeLast(1600)
-        val contextualPrompt = if (previousTurns.isBlank()) message else
-            "Konteks perbualan terdahulu (gunakan hanya jika berkaitan):\n" +
-            previousTurns + "\n\nSoalan pengguna sekarang: " + message +
-            "\nJawab soalan sekarang berdasarkan konteks yang berkaitan."
+        val sessionInstruction = if (previousTurns.isBlank()) systemInstruction else
+            systemInstruction +
+            "\n\nBerikut ialah sejarah sebenar sesi ini. Gunakan fakta yang diberikan pengguna " +
+            "untuk menjawab soalan susulan. Jangan kata tidak tahu jika jawapan ada dalam sejarah." +
+            "\nSEJARAH:\n" + previousTurns + "\nTAMAT SEJARAH."
         items += true to message
         items += false to "Sedang menjawab…"
         renderHistory()
@@ -274,7 +277,10 @@ class MainActivity : AppCompatActivity() {
             try {
                 withContext(Dispatchers.Default) {
                     var lastUiRefresh = 0L
-                    engine.sendUserPrompt(contextualPrompt, 256).collect { token ->
+                    // setSystemPrompt clears the native KV cache/chat state, ensuring
+                    // old or duplicated native turns do not influence this reply.
+                    engine.setSystemPrompt(sessionInstruction)
+                    engine.sendUserPrompt(message, 256).collect { token ->
                         raw.append(token)
                         val now = SystemClock.uptimeMillis()
                         if (now - lastUiRefresh >= 250L) {
