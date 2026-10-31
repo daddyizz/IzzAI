@@ -121,9 +121,8 @@ class MainActivity : AppCompatActivity() {
                 setStatus("Memulakan sesi baharu…")
                 lifecycleScope.launch {
                     try {
+                        // Reset the native KV cache and chat history without reloading the 3B model.
                         withContext(Dispatchers.Default) {
-                            engine.cleanUp()
-                            engine.loadModel(path)
                             engine.setSystemPrompt(systemInstruction)
                         }
                         items.clear()
