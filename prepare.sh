@@ -54,6 +54,12 @@ s = s.replace(old, old + '\n        char model_arch[64] = {};\n        llama_mod
 old = "stop_generation_position = current_position + user_prompt_size + n_predict;"
 assert s.count(old) == 1, "Unexpected token limit logic"
 s = s.replace(old, "stop_generation_position = current_position + n_predict;")
+# When starting a new conversation, the existing system-prompt native entry point
+# clears llama KV state and conversation history. Also reset sampler token history.
+old_system = "reset_long_term_states();\\n    reset_short_term_states();"
+assert s.count(old_system) >= 1, "Native system prompt reset block changed"
+s = s.replace(old_system,
+              "reset_long_term_states();\\n    reset_short_term_states();\\n    common_sampler_reset(g_sampler);", 1)
 old_temp = "constexpr float DEFAULT_SAMPLER_TEMP    = 0.3f;"
 assert old_temp in s, "Native sampler definition changed"
 s = s.replace(old_temp, "constexpr float DEFAULT_SAMPLER_TEMP    = 0.0f;")
@@ -64,5 +70,18 @@ p.write_text(s)
 print("Patched Qwen chat templates, corrected token limit and 4096-token context")
 
 PYQWEN
+# Permit changing the system prompt between completed generations.
+# The native entry point resets history and KV cache; it does not reload GGUF.
+python3 - "$ROOT/android/lib/src/main/java/com/arm/aichat/internal/InferenceEngineImpl.kt" <<'PYRESET'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+old = 'check(_readyForSystemPrompt) { "System prompt must be set ** RIGHT AFTER ** model loaded!" }'
+assert s.count(old) == 1, "Upstream system prompt guard changed"
+s = s.replace(old, '// IzzAI: allow native system-prompt reset while ModelReady')
+p.write_text(s)
+print("Patched in-place context reset for subsequent chats")
+PYRESET
 echo "Prepared android/ using llama.cpp $SHA."
 echo "Run: cd android && bash gradlew assembleDebug"
