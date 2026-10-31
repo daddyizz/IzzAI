@@ -250,22 +250,18 @@ class MainActivity : AppCompatActivity() {
         if (!modelReady || loading || generation?.isActive == true) return
         val message = input.text.toString().trim()
         if (message.isEmpty()) return
-        val priorFacts = items.filter { it.first }.takeLast(5).joinToString("\n") { it.second }
         input.setText("")
         items += true to message
         items += false to "Sedang menjawab…"
         renderHistory()
         saveHistory()
-        setStatus("Menjana jawapan offline…")
+        val activeModel = getPreferences(MODE_PRIVATE).getString("model_path", null)?.let { File(it).name } ?: "model tidak diketahui"
+        setStatus("Menjana jawapan • $activeModel")
         generation = lifecycleScope.launch {
             val raw = StringBuilder()
             try {
                 withContext(Dispatchers.Default) {
-                    engine.sendUserPrompt(
-                        "Maklumat pengguna terdahulu (jika berkaitan):\n$priorFacts\n" +
-                        "Soalan terkini: $message\nJawab terus dalam Bahasa Melayu Malaysia.",
-                        768
-                    ).collect { token ->
+                    engine.sendUserPrompt(message, 768).collect { token ->
                         raw.append(token)
                         val clean = cleanThinking(raw.toString())
                         withContext(Dispatchers.Main) {
@@ -280,7 +276,7 @@ class MainActivity : AppCompatActivity() {
                     raw.isNotBlank() -> "Model menjana teks tetapi tiada jawapan akhir. Output diagnostik:\n${raw.toString().take(2500)}"
                     else -> "Model tidak menghasilkan token. Sila laporkan mesej ini untuk diagnosis enjin."
                 }
-                setStatus("● Model lokal • ${raw.length} aksara dihasilkan")
+                setStatus("● ${activeModel} • ${raw.length} aksara")
             } catch (e: Exception) {
                 items[items.lastIndex] = false to "Ralat inferens (${e.javaClass.simpleName}): ${e.message}"
                 setStatus("Inferens gagal: ${e.message}")
