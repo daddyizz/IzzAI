@@ -1,21 +1,30 @@
-# IzzAI v0.2 (Android, offline)
+# IzzAI v0.3 (Android native, offline)
 
-Native Android Kotlin frontend for an on-device GGUF model. Integration base: the official `ggml-org/llama.cpp` `examples/llama.android` project at commit `a34de8618b25dfc32ee43749db47d767a9f0a25d`.
+IzzAI is a Kotlin Android chat application running llama.cpp locally using GGUF models. It does not call cloud AI APIs.
 
-## What is implemented
+## Recommended v0.3 model
 
-- Kotlin chat interface and streaming inference using upstream `AiChat` / `InferenceEngine` native runtime
-- Import GGUF with Android's document picker, copy into the app's private model storage
-- Saved chat locally in `conversation.json` with a 100-message cap
-- Filter visible `<think>...</think>` and `[Start thinking]...[End thinking]` traces
-- Offline inference once the APK and model are on the phone
-- No external AI service, no cloud account, no API key
+- **Qwen2.5-3B-Instruct-GGUF Q4_K_M**, 3.09B parameters, approximately 2.1 GB.
+- Publisher: Qwen, https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF
+- File: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+- Check the model license on its model card before redistribution or commercial use.
+- Recommended for testing on 16 GB RAM Android devices; device performance remains unverified.
 
-## Build via GitHub Actions
+Download the GGUF on the phone, choose **Import GGUF** inside IzzAI and select it in the Android document picker. When the picker hides unknown GGUF extensions, rename the downloaded file from `.gguf` to `.txt` (do not change its contents), then import. The app restores the original `.gguf` extension within private model storage.
 
-Upload this folder to a **new** GitHub repository (for example `daddyizz/IzzAI`) including `.github/workflows/build-apk.yml`, then run `Build IzzAI APK`. The workflow checks out a pinned version of the official native engine, patches its Android example, compiles a debug APK and publishes it as an artifact. No APK is bundled in this ZIP.
+Imported models are stored under their individual filenames, preserving previous imports rather than always overwriting the legacy `izzai-model.gguf`. The selected model path is retained for the next launch. **Chat baharu** now clears both the visible history and native model context.
 
-Or use Linux / Android Studio with Android SDK+NDK:
+## Version v0.3 adjustments
+
+- Uses the GGUF model's embedded chat template.
+- Qwen3 non-thinking assistant prefix is used only for `qwen3` architecture, not Qwen2.5 `qwen2`.
+- Maintains system prompts prioritizing Bahasa Melayu Malaysia.
+- Includes a short window of earlier user messages as additional context.
+- Includes native session reset to prevent prior conversation carryover.
+
+## Build
+
+Run `Build IzzAI APK` in GitHub Actions, or:
 
 ```sh
 bash prepare.sh
@@ -23,21 +32,13 @@ cd android
 bash gradlew assembleDebug
 ```
 
-## Reuse the existing model from Termux
+## Verification checklist
 
-The app **cannot** directly access `~/izzai/models` inside Termux due to Android sandboxing. Run this in Termux first:
+1. Install as update without deleting previous app data.
+2. Import Qwen2.5 3B Q4_K_M; verify model loads.
+3. Airplane mode on, Wi-Fi off: ask `Apakah ibu negara Malaysia?` and verify `Kuala Lumpur`.
+4. Tell IzzAI `Nama kucing saya Oyen` and ask it to recall.
+5. Press `Chat baharu`; verify the model no longer knows `Oyen`.
+6. Verify the status bar, navigation bar and keyboard never overlap the UI.
 
-```sh
-termux-setup-storage
-cp ~/izzai/models/Qwen3-0.6B-Q4_K_M.gguf ~/storage/downloads/
-```
-
-Open IzzAI, tap **Import GGUF**, select the copied `.gguf` file in Downloads. The app creates its own internal copy. After the model loads, turn off mobile data and Wi-Fi to test offline.
-
-## Important limitations
-
-- This is a build-ready source candidate, **not** a device-tested APK. The native engine build and NDK setup may need fixes once CI output is available.
-- The model and chat history are local to the app, but the UI does not yet feed saved chat history back into inference after app restart. Only the native engine's active session has conversation continuity.
-- Model loading and generation may be resource-heavy; context/window and token limits depend on the upstream runtime.
-- For greater privacy, avoid sharing any exported chat data or GGUF files with untrusted apps.
-- App label, theme and accessibility require device QA.
+GitHub Actions compilation alone does not establish device-level test success.
