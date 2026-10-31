@@ -26,11 +26,11 @@ p.write_text(s.replace(old, f'set(LLAMA_SRC "{source}")'))
 PYCM
 # Keep the upstream package namespace to avoid breaking C++ / JNI symbols.
 # Give the app its own appId and title.
-sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.daddyizz.izzai"/' "$ROOT/android/app/build.gradle.kts"
+sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.daddyizz.izzai.test"/' "$ROOT/android/app/build.gradle.kts"
 # Patch the app's label in the existing strings resource.
 python3 - "$ROOT/android/app/src/main/res/values/strings.xml" <<'PY'
 import pathlib,re,sys
-p=pathlib.Path(sys.argv[1]); s=p.read_text(); s=re.sub(r'(<string name="app_name">).*?(</string>)', r'\1IzzAI\2',s, count=1); p.write_text(s)
+p=pathlib.Path(sys.argv[1]); s=p.read_text(); s=re.sub(r'(<string name="app_name">).*?(</string>)', r'\1IzzAI Test 0.3.6\2',s, count=1); p.write_text(s)
 PY
 # Android sample project lives within repo; point its CMake relative path to source tree.
 # Keep entire native tree available adjacent to Android project.
