@@ -27,6 +27,28 @@ PYCM
 # Keep the upstream package namespace to avoid breaking C++ / JNI symbols.
 # Give the app its own appId and title.
 sed -i 's/applicationId = "com.example.llama.aichat"/applicationId = "com.daddyizz.izzai.test"/' "$ROOT/android/app/build.gradle.kts"
+# Use the same dedicated test signing identity for every workflow run.
+# Fail closed: without GitHub Actions secrets, do not silently generate
+# a new debug certificate that breaks Android updates.
+python3 - "$ROOT/android/app/build.gradle.kts" <<'PYSIGN'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+assert 'versionCode = 1' in s
+s = s.replace('versionCode = 1', 'versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1) + 1000', 1)
+assert '    buildTypes {' in s
+s = s.replace('    buildTypes {', '''    signingConfigs {
+        getByName("debug") {
+            storeFile = file(System.getenv("IZZAI_KEYSTORE_PATH") ?: error("Missing signing keystore path"))
+            storePassword = System.getenv("IZZAI_SIGNING_PASSWORD") ?: error("Missing signing password")
+            keyAlias = "izzai-test"
+            keyPassword = storePassword
+        }
+    }
+    buildTypes {''', 1)
+p.write_text(s)
+PYSIGN
 # Patch the app's label in the existing strings resource.
 python3 - "$ROOT/android/app/src/main/res/values/strings.xml" <<'PY'
 import pathlib,re,sys
