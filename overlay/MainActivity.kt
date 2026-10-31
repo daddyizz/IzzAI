@@ -5,6 +5,7 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.os.Bundle
+import android.os.SystemClock
 import android.text.InputType
 import android.view.Gravity
 import android.view.WindowManager
@@ -51,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var importButton: Button
     private lateinit var clearButton: Button
     private lateinit var composeBar: LinearLayout
+    private var activeReplyView: TextView? = null
     private val items = mutableListOf<Pair<Boolean, String>>()
     private val store by lazy { File(filesDir, "conversation.json") }
     private val models by lazy { File(filesDir, "models").apply { mkdirs() } }
@@ -261,12 +263,18 @@ class MainActivity : AppCompatActivity() {
             val raw = StringBuilder()
             try {
                 withContext(Dispatchers.Default) {
-                    engine.sendUserPrompt(message, 768).collect { token ->
+                    var lastUiRefresh = 0L
+                    engine.sendUserPrompt(message, 384).collect { token ->
                         raw.append(token)
-                        val clean = cleanThinking(raw.toString())
-                        withContext(Dispatchers.Main) {
-                            items[items.lastIndex] = false to (clean.ifBlank { "Sedang menjawab… (${raw.length} aksara diterima)" })
-                            renderHistory()
+                        val now = SystemClock.uptimeMillis()
+                        if (now - lastUiRefresh >= 250L) {
+                            lastUiRefresh = now
+                            val currentText = cleanThinking(raw.toString())
+                                .ifBlank { "Sedang menjawab… (${raw.length} aksara)" }
+                            withContext(Dispatchers.Main) {
+                                items[items.lastIndex] = false to currentText
+                                activeReplyView?.text = currentText
+                            }
                         }
                     }
                 }
@@ -300,6 +308,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderHistory() {
+        activeReplyView = null
         conversation.removeAllViews()
         if (items.isEmpty()) {
             conversation.addView(TextView(this).apply {
@@ -309,7 +318,7 @@ class MainActivity : AppCompatActivity() {
                 setPadding(dp(8), dp(28), dp(8), dp(12))
             })
         }
-        items.forEach { (user, body) ->
+        items.forEachIndexed { index, (user, body) ->
             val line = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = if (user) Gravity.END else Gravity.START
@@ -321,6 +330,7 @@ class MainActivity : AppCompatActivity() {
                 setBackgroundColor(if (user) Color.rgb(35, 70, 68) else panel)
                 setPadding(dp(12), dp(11), dp(12), dp(11))
             }
+            if (!user && index == items.lastIndex) activeReplyView = bubble
             line.addView(bubble, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             conversation.addView(line, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(11) })
         }
