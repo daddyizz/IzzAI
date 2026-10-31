@@ -252,6 +252,17 @@ class MainActivity : AppCompatActivity() {
         val message = input.text.toString().trim()
         if (message.isEmpty()) return
         input.setText("")
+        // Include a small, bounded window of previous turns explicitly.
+        // Native context alone is not reliable across restored sessions or model reloads.
+        val previousTurns = items.takeLast(8).filter { (user, body) ->
+            user || (body.isNotBlank() && !body.startsWith("Ralat inferens") && body != "Sedang menjawab…")
+        }.map { (user, body) ->
+            (if (user) "Pengguna: " else "IzzAI: ") + body.take(300)
+        }.joinToString("\n").takeLast(1600)
+        val contextualPrompt = if (previousTurns.isBlank()) message else
+            "Konteks perbualan terdahulu (gunakan hanya jika berkaitan):\n" +
+            previousTurns + "\n\nSoalan pengguna sekarang: " + message +
+            "\nJawab soalan sekarang berdasarkan konteks yang berkaitan."
         items += true to message
         items += false to "Sedang menjawab…"
         renderHistory()
@@ -263,7 +274,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 withContext(Dispatchers.Default) {
                     var lastUiRefresh = 0L
-                    engine.sendUserPrompt(message, 384).collect { token ->
+                    engine.sendUserPrompt(contextualPrompt, 256).collect { token ->
                         raw.append(token)
                         val now = SystemClock.uptimeMillis()
                         if (now - lastUiRefresh >= 250L) {
