@@ -25,3 +25,13 @@ Passing a compilation/build does not mean an inference test passed.
 - Closing and reopening app works without loss of selected model.
 - Test APK remains separate from stable `com.daddyizz.izzai`.
 - Signing certificate continuity is NOT yet solved; do not uninstall stable IzzAI.
+
+## Offline retrieval MVP (post v0.3.6)
+- Verify the latest APK contains `assets/izzai_knowledge.json`.
+- With airplane mode enabled, ask "Keretapi untuk pergi Singapore, keretapi apa?" in a fresh chat. Expected: "Shuttle Tebrau" conditioned on travel from JB Sentral; status should show "Rujukan offline".
+- Ask "Apakah nama kereta api dari JB Sentral ke Woodlands Train Checkpoint?" in a fresh chat. Expected: "Shuttle Tebrau"; status should show "Rujukan offline".
+- Ask "Kerajaan Majapahit berasal dari mana?" Expected: "Jawa Timur"; status should show "Rujukan offline".
+- Ask an unrelated question such as "Berapakah 7 + 8?" Expected: "15"; it should NOT show "Rujukan offline".
+- Ask a live schedule/seat-availability question. Do not claim real-time availability in airplane mode.
+- Regression: same-chat Oyen recall, Chat baharu reset, input disabled during loading, and signed Update preserving GGUF.
+- This is a small keyword-retrieval MVP with two locally reviewed facts, not a general-purpose vector database, live search, or complete Malaysian knowledge base.
