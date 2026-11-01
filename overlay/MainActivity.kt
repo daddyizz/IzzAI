@@ -6,6 +6,9 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.os.Bundle
 import android.os.Process
+import android.os.Build
+import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import java.util.UUID
 import android.os.SystemClock
 import android.text.InputType
@@ -84,8 +87,32 @@ class MainActivity : AppCompatActivity() {
         if (newProcess) {
             diagnosticPrefs.edit().putString("process_session_id", processSessionId).apply()
         }
+        val previousPid = diagnosticPrefs.getInt("last_pid", -1)
+        val exitReport = if (newProcess && previousPid > 0 && Build.VERSION.SDK_INT >= 30) {
+            runCatching {
+                val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+                // Query prior process exit diagnostics maintained by Android.
+                val exits = manager.getHistoricalProcessExitReasons(packageName, previousPid, 1)
+                exits.firstOrNull()?.let { exit ->
+                    val reason = when (exit.reason) {
+                        ApplicationExitInfo.REASON_LOW_MEMORY -> "LOW_MEMORY"
+                        ApplicationExitInfo.REASON_CRASH -> "JAVA_CRASH"
+                        ApplicationExitInfo.REASON_CRASH_NATIVE -> "NATIVE_CRASH"
+                        ApplicationExitInfo.REASON_ANR -> "ANR"
+                        ApplicationExitInfo.REASON_SIGNALED -> "SIGNAL"
+                        ApplicationExitInfo.REASON_USER_REQUESTED -> "USER_REQUESTED"
+                        ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "RESOURCE_LIMIT"
+                        ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "DEPENDENCY_DIED"
+                        ApplicationExitInfo.REASON_OTHER -> "OTHER"
+                        else -> "UNKNOWN(${exit.reason})"
+                    }
+                    " • Exit: $reason • RSS ${exit.rss / 1024} MB"
+                } ?: " • Exit: TIADA REKOD"
+            }.getOrElse { " • Exit: TIDAK DAPAT DIBACA" }
+        } else ""
+        diagnosticPrefs.edit().putInt("last_pid", Process.myPid()).apply()
         val diagnosticMessage = if (newProcess) {
-            "Diagnostik: PROSES BAHARU • PID ${Process.myPid()}"
+            "Diagnostik: PROSES BAHARU • PID ${Process.myPid()}$exitReport"
         } else {
             "Diagnostik: ACTIVITY DICIPTA SEMULA • PID ${Process.myPid()}"
         }
