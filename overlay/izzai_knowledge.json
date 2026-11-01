@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "checked": "2026-11-01",
+  "facts": [
+    {
+      "id": "ktmb-shuttle-tebrau",
+      "anchor_groups": [
+        [
+          "kereta api",
+          "keretapi",
+          "train",
+          "tren",
+          "ktm",
+          "shuttle"
+        ],
+        [
+          "singapura",
+          "singapore",
+          "woodlands",
+          "jb sentral"
+        ]
+      ],
+      "fact": "Perkhidmatan kereta api KTMB yang menghubungkan JB Sentral, Johor Bahru, dengan Woodlands Train Checkpoint, Singapura, bernama Shuttle Tebrau. KTM Komuter bukan nama perkhidmatan rentas sempadan ini. Jika soalan tidak menyebut tempat bertolak, jawapan mestilah bersyarat: 'Jika dari Johor Bahru, naik KTM Shuttle Tebrau dari JB Sentral ke Woodlands.' Jangan menyatakan ada kereta api terus Kuala Lumpur-Singapura tanpa pengesahan jadual terkini.",
+      "source": "KTMB, jadual tren rasmi: https://www.ktmb.com.my/traintime.html",
+      "checked": "2026-11-01"
+    },
+    {
+      "id": "majapahit-location",
+      "anchor_groups": [
+        [
+          "majapahit"
+        ],
+        [
+          "asal",
+          "berasal",
+          "mana",
+          "where",
+          "lokasi",
+          "pusat"
+        ]
+      ],
+      "fact": "Kerajaan Majapahit berpusat di kawasan Trowulan, Jawa Timur, di wilayah Indonesia hari ini. Kerajaan bersejarah ini muncul pada penghujung abad ke-13.",
+      "source": "Rujukan sejarah umum; semak dengan sumber sejarah akademik sebelum penggunaan berisiko tinggi.",
+      "checked": "2026-11-01"
+    }
+  ]
+}
