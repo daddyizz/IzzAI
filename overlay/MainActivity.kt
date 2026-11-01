@@ -86,6 +86,7 @@ class MainActivity : AppCompatActivity() {
                     val initialState = engine.state.value
                     Log.i("IzzAI-Lifecycle", "onCreate engine state: ${initialState.javaClass.simpleName}")
                     val state = when (initialState) {
+                        is InferenceEngine.State.Uninitialized,
                         is InferenceEngine.State.Initializing,
                         is InferenceEngine.State.LoadingModel,
                         is InferenceEngine.State.ProcessingSystemPrompt,
