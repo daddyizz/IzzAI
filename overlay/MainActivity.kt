@@ -21,6 +21,9 @@ import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.arm.aichat.AiChat
 import com.arm.aichat.InferenceEngine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -77,7 +80,46 @@ class MainActivity : AppCompatActivity() {
                 initialized = true
                 val previous = getPreferences(MODE_PRIVATE).getString("model_path", null)
                 if (previous != null && File(previous).isFile) {
-                    loadModel(File(previous))
+                    val modelFile = File(previous)
+                    // The engine is a process-wide singleton. Reuse it if the
+                    // Activity was recreated while the Android process survived.
+                    val initialState = engine.state.value
+                    Log.i("IzzAI-Lifecycle", "onCreate engine state: ${initialState.javaClass.simpleName}")
+                    val state = when (initialState) {
+                        is InferenceEngine.State.Initializing,
+                        is InferenceEngine.State.LoadingModel,
+                        is InferenceEngine.State.ProcessingSystemPrompt,
+                        is InferenceEngine.State.Generating,
+                        is InferenceEngine.State.ProcessingUserPrompt -> {
+                            withTimeoutOrNull(120_000L) {
+                                engine.state.first {
+                                    it is InferenceEngine.State.ModelReady ||
+                                        it is InferenceEngine.State.Initialized ||
+                                        it is InferenceEngine.State.Error
+                                }
+                            }
+                        }
+                        else -> initialState
+                    }
+                    when (state) {
+                        is InferenceEngine.State.ModelReady -> {
+                            modelReady = true
+                            loading = false
+                            setStatus("● Model kekal dalam RAM • ${modelFile.name}")
+                            Log.i("IzzAI-Lifecycle", "Reused loaded GGUF without reload")
+                            updateButtons()
+                        }
+                        is InferenceEngine.State.Initialized -> loadModel(modelFile)
+                        is InferenceEngine.State.Error -> {
+                            setStatus("Memulihkan enjin model…")
+                            withContext(Dispatchers.Default) { engine.cleanUp() }
+                            loadModel(modelFile)
+                        }
+                        else -> {
+                            setStatus("Enjin belum sedia; buka semula jika loading tersekat")
+                            updateButtons()
+                        }
+                    }
                 } else {
                     setStatus("Tiada model • Pilih fail GGUF")
                     updateButtons()
@@ -423,7 +465,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         generation?.cancel()
-        if (initialized) lifecycleScope.launch(Dispatchers.Default) { runCatching { engine.destroy() } }
+        // Never destroy the process-wide AiChat singleton from an Activity.
+        // Android may recreate the Activity while the same process is alive.
+        // Destroying it here invalidates the shared native inference engine.
+        Log.i("IzzAI-Lifecycle", "Activity destroyed; native engine retained in process")
         super.onDestroy()
     }
 }
