@@ -14,6 +14,9 @@ cp -a "$UPSTREAM/examples/llama.android/." "$ROOT/android/"
 # The upstream project relies on the parent repository's native source tree.
 # Symlink from android/lib to the full upstream tree remains possible through an absolute CMake path.
 cp "$ROOT/overlay/MainActivity.kt" "$ROOT/android/app/src/main/java/com/example/llama/MainActivity.kt"
+cp "$ROOT/overlay/OfflineKnowledge.kt" "$ROOT/android/app/src/main/java/com/example/llama/OfflineKnowledge.kt"
+mkdir -p "$ROOT/android/app/src/main/assets"
+cp "$ROOT/overlay/izzai_knowledge.json" "$ROOT/android/app/src/main/assets/izzai_knowledge.json"
 # CMake in the upstream example assumes llama.android lives under llama.cpp/examples/.
 # In this standalone overlay package we explicitly use the checked-out source tree.
 python3 - "$ROOT/android/lib/src/main/cpp/CMakeLists.txt" "$UPSTREAM" <<'PYCM'
