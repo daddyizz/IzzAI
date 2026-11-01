@@ -267,6 +267,7 @@ class MainActivity : AppCompatActivity() {
             "untuk menjawab soalan susulan tentang chat sahaja. Untuk pengetahuan am, " +
             "gunakan pengetahuan umum model. Jawapan AI terdahulu mungkin salah." +
             "\nSEJARAH:\n" + previousTurns + "\nTAMAT SEJARAH."
+        val evidence = OfflineKnowledge.retrieve(applicationContext, message)
         items += true to message
         items += false to "Sedang menjawab…"
         renderHistory()
@@ -280,7 +281,9 @@ class MainActivity : AppCompatActivity() {
                     var lastUiRefresh = 0L
                     // setSystemPrompt clears the native KV cache/chat state, ensuring
                     // old or duplicated native turns do not influence this reply.
-                    engine.setSystemPrompt(sessionInstruction)
+                    val groundedInstruction = sessionInstruction +
+                        (evidence?.let { OfflineKnowledge.instruction(it) } ?: "")
+                    engine.setSystemPrompt(groundedInstruction)
                     engine.sendUserPrompt(message, 256).collect { token ->
                         raw.append(token)
                         val now = SystemClock.uptimeMillis()
@@ -301,7 +304,8 @@ class MainActivity : AppCompatActivity() {
                     raw.isNotBlank() -> "Model menjana teks tetapi tiada jawapan akhir. Output diagnostik:\n${raw.toString().take(2500)}"
                     else -> "Model tidak menghasilkan token. Sila laporkan mesej ini untuk diagnosis enjin."
                 }
-                setStatus("● ${activeModel} • ${raw.length} aksara")
+                setStatus("● ${activeModel} • ${raw.length} aksara" +
+                    (if (evidence != null) " • Rujukan offline" else ""))
             } catch (e: Exception) {
                 items[items.lastIndex] = false to "Ralat inferens (${e.javaClass.simpleName}): ${e.message}"
                 setStatus("Inferens gagal: ${e.message}")
