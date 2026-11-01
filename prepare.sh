@@ -39,6 +39,8 @@ import sys
 p = Path(sys.argv[1])
 s = p.read_text()
 assert 'versionCode = 1' in s
+assert 'versionName = "1.0"' in s
+s = s.replace('versionName = "1.0"', 'versionName = "0.3.7-test"', 1)
 s = s.replace('versionCode = 1', 'versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1) + 1000', 1)
 assert '    buildTypes {' in s
 s = s.replace('    buildTypes {', '''    signingConfigs {
@@ -55,7 +57,7 @@ PYSIGN
 # Patch the app's label in the existing strings resource.
 python3 - "$ROOT/android/app/src/main/res/values/strings.xml" <<'PY'
 import pathlib,re,sys
-p=pathlib.Path(sys.argv[1]); s=p.read_text(); s=re.sub(r'(<string name="app_name">).*?(</string>)', r'\1IzzAI Test 0.3.6\2',s, count=1); p.write_text(s)
+p=pathlib.Path(sys.argv[1]); s=p.read_text(); s=re.sub(r'(<string name="app_name">).*?(</string>)', r'\1IzzAI Test 0.3.7\2',s, count=1); p.write_text(s)
 PY
 # Android sample project lives within repo; point its CMake relative path to source tree.
 # Keep entire native tree available adjacent to Android project.
