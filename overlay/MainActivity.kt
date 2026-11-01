@@ -5,6 +5,8 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.os.Bundle
+import android.os.Process
+import java.util.UUID
 import android.os.SystemClock
 import android.text.InputType
 import android.view.Gravity
@@ -35,6 +37,10 @@ import java.io.FileOutputStream
 
 /** IzzAI: entirely on-device GGUF inference, using the official llama.android engine. */
 class MainActivity : AppCompatActivity() {
+    companion object {
+        // Re-created only if Android starts a new Linux app process.
+        private val processSessionId: String = UUID.randomUUID().toString()
+    }
     private val bg = Color.rgb(11, 15, 23)
     private val panel = Color.rgb(25, 31, 44)
     private val accent = Color.rgb(93, 194, 169)
@@ -48,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private var loading = false
     private var generation: Job? = null
     private lateinit var status: TextView
+    private lateinit var lifecycleDiagnostic: TextView
     private lateinit var conversation: LinearLayout
     private lateinit var scroll: ScrollView
     private lateinit var input: EditText
@@ -71,6 +78,19 @@ class MainActivity : AppCompatActivity() {
         window.navigationBarColor = bg
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         buildUi()
+        val diagnosticPrefs = getSharedPreferences("izzai_process_diagnostics", MODE_PRIVATE)
+        val lastProcessId = diagnosticPrefs.getString("process_session_id", null)
+        val newProcess = lastProcessId != processSessionId
+        if (newProcess) {
+            diagnosticPrefs.edit().putString("process_session_id", processSessionId).apply()
+        }
+        val diagnosticMessage = if (newProcess) {
+            "Diagnostik: PROSES BAHARU • PID ${Process.myPid()}"
+        } else {
+            "Diagnostik: ACTIVITY DICIPTA SEMULA • PID ${Process.myPid()}"
+        }
+        lifecycleDiagnostic.text = diagnosticMessage
+        Log.i("IzzAI-Lifecycle", diagnosticMessage)
         loadHistory()
         renderHistory()
         setStatus("Memulakan enjin AI lokal…")
@@ -152,6 +172,12 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, dp(3), 0, dp(14))
         }
         root.addView(status)
+        lifecycleDiagnostic = TextView(this).apply {
+            textSize = 10f
+            setTextColor(muted)
+            setPadding(0, 0, 0, dp(8))
+        }
+        root.addView(lifecycleDiagnostic)
         val tools = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         importButton = makeButton("Import GGUF", accent).apply { setOnClickListener { if (!loading) pickModel.launch(arrayOf("*/*")) } }
         clearButton = makeButton("Chat baharu", muted).apply {
