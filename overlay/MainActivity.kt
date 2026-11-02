@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.os.Bundle
 import android.os.Process
+import android.os.Debug
 import android.os.Build
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
@@ -58,6 +59,7 @@ class MainActivity : AppCompatActivity() {
     private var generation: Job? = null
     private lateinit var status: TextView
     private lateinit var lifecycleDiagnostic: TextView
+    private lateinit var memoryDiagnostic: TextView
     private lateinit var conversation: LinearLayout
     private lateinit var scroll: ScrollView
     private lateinit var input: EditText
@@ -156,6 +158,7 @@ class MainActivity : AppCompatActivity() {
                             setStatus("● Model kekal dalam RAM • ${modelFile.name}")
                             Log.i("IzzAI-Lifecycle", "Reused loaded GGUF without reload")
                             updateButtons()
+                            updateMemoryDiagnostic("model digunakan semula")
                         }
                         is InferenceEngine.State.Initialized -> loadModel(modelFile)
                         is InferenceEngine.State.Error -> {
@@ -205,6 +208,12 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, dp(8))
         }
         root.addView(lifecycleDiagnostic)
+        memoryDiagnostic = TextView(this).apply {
+            textSize = 10f
+            setTextColor(muted)
+            setPadding(0, 0, 0, dp(8))
+        }
+        root.addView(memoryDiagnostic)
         val tools = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         importButton = makeButton("Import GGUF", accent).apply { setOnClickListener { if (!loading) pickModel.launch(arrayOf("*/*")) } }
         clearButton = makeButton("Chat baharu", muted).apply {
@@ -335,6 +344,7 @@ class MainActivity : AppCompatActivity() {
             getPreferences(MODE_PRIVATE).edit().putString("model_path", file.absolutePath).apply()
             modelReady = true
             setStatus("● Model lokal • ${file.name}")
+            updateMemoryDiagnostic("GGUF siap")
         } catch (e: Exception) {
             setStatus("Model gagal dimuatkan: ${e.message}")
         } finally {
@@ -513,6 +523,31 @@ class MainActivity : AppCompatActivity() {
             insets
         }
         ViewCompat.requestApplyInsets(root)
+    }
+
+    private fun updateMemoryDiagnostic(stage: String) {
+        if (!::memoryDiagnostic.isInitialized) return
+        val ownPid = Process.myPid()
+        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val total = am.getProcessMemoryInfo(intArrayOf(ownPid)).firstOrNull()
+        val pss = total?.totalPss?.div(1024) ?: -1
+        val nativeHeap = Debug.getNativeHeapAllocatedSize() / (1024L * 1024L)
+        val system = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(system)
+        val avail = system.availMem / (1024L * 1024L)
+        val summary = "RAM ($stage): PSS ${pss} MB • Native ${nativeHeap} MB • Tersedia ${avail} MB"
+        memoryDiagnostic.text = summary
+        Log.i("IzzAI-Memory", summary)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::memoryDiagnostic.isInitialized) updateMemoryDiagnostic("resume")
+    }
+
+    override fun onStop() {
+        if (::memoryDiagnostic.isInitialized) updateMemoryDiagnostic("background")
+        super.onStop()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
