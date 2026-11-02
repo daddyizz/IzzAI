@@ -40,7 +40,7 @@ p = Path(sys.argv[1])
 s = p.read_text()
 assert 'versionCode = 1' in s
 assert 'versionName = "1.0"' in s
-s = s.replace('versionName = "1.0"', 'versionName = "0.4.0-test"', 1)
+s = s.replace('versionName = "1.0"', 'versionName = "0.4.1-test"', 1)
 s = s.replace('versionCode = 1', 'versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1) + 1000', 1)
 assert '    buildTypes {' in s
 s = s.replace('    buildTypes {', '''    signingConfigs {
@@ -57,7 +57,7 @@ PYSIGN
 # Patch the app's label in the existing strings resource.
 python3 - "$ROOT/android/app/src/main/res/values/strings.xml" <<'PY'
 import pathlib,re,sys
-p=pathlib.Path(sys.argv[1]); s=p.read_text(); s=re.sub(r'(<string name="app_name">).*?(</string>)', r'\1IzzAI Test 0.4.0\2',s, count=1); p.write_text(s)
+p=pathlib.Path(sys.argv[1]); s=p.read_text(); s=re.sub(r'(<string name="app_name">).*?(</string>)', r'\1IzzAI Test 0.4.1\2',s, count=1); p.write_text(s)
 PY
 # Android sample project lives within repo; point its CMake relative path to source tree.
 # Keep entire native tree available adjacent to Android project.
@@ -90,11 +90,14 @@ s = s.replace(old_system,
 old_temp = "constexpr float DEFAULT_SAMPLER_TEMP    = 0.3f;"
 assert old_temp in s, "Native sampler definition changed"
 s = s.replace(old_temp, "constexpr float DEFAULT_SAMPLER_TEMP    = 0.0f;")
+old_batch = "constexpr int   BATCH_SIZE              = 512;"
+assert old_batch in s, "Native batch constant changed"
+s = s.replace(old_batch, "constexpr int   BATCH_SIZE              = 256;")
 old_ctx = "constexpr int   DEFAULT_CONTEXT_SIZE    = 8192;"
 assert old_ctx in s, "Native context definition changed"
 s = s.replace(old_ctx, "constexpr int   DEFAULT_CONTEXT_SIZE    = 2048;")
 p.write_text(s)
-print("Patched Qwen chat templates, corrected token limit and 2048-token context")
+print("Patched Qwen chat templates, token limit, 2048-token context and 256-token batch")
 
 PYQWEN
 # Permit changing the system prompt between completed generations.
