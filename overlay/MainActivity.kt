@@ -558,15 +558,15 @@ class MainActivity : AppCompatActivity() {
         val filePages = procStats["RssFile"] ?: -1L
         val swap = procStats["VmSwap"] ?: -1L
         val summary = "RAM ($stage): PSS ${pss} MB • RSS ${rss} MB • Native ${nativeHeap} MB" +
-            "\\nAnon ${anon} MB • Fail ${filePages} MB • Swap ${swap} MB • Tersedia ${avail} MB"
+            "\nAnon ${anon} MB • Fail ${filePages} MB • Swap ${swap} MB • Tersedia ${avail} MB"
         memoryDiagnostic.text = summary
-        Log.i("IzzAI-Memory", summary.replace("\\n", " | "))
+        Log.i("IzzAI-Memory", summary.replace("\n", " | "))
         // Keep a short on-device timeline for comparison across app restarts.
         runCatching {
             val trace = File(filesDir, "memory-diagnostics.txt")
             if (trace.length() > 48_000) trace.writeText("")
             trace.appendText("${System.currentTimeMillis()} pid=${Process.myPid()} " +
-                summary.replace("\\n", " | ") + "\\n")
+                summary.replace("\n", " | ") + "\n")
         }
     }
 
