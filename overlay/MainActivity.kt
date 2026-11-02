@@ -420,6 +420,7 @@ class MainActivity : AppCompatActivity() {
                 saveHistory()
                 generation = null
                 updateButtons()
+                updateMemoryDiagnostic("selepas jawapan")
             }
         }
     }
@@ -527,17 +528,46 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateMemoryDiagnostic(stage: String) {
         if (!::memoryDiagnostic.isInitialized) return
-        val ownPid = Process.myPid()
-        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-        val total = am.getProcessMemoryInfo(intArrayOf(ownPid)).firstOrNull()
-        val pss = total?.totalPss?.div(1024) ?: -1
+        // Debug.getMemoryInfo() measures our own process. On modern Android,
+        // ActivityManager.getProcessMemoryInfo() can return throttled or
+        // restricted results even for the current PID.
+        val pss = runCatching {
+            val details = Debug.MemoryInfo()
+            Debug.getMemoryInfo(details)
+            details.totalPss / 1024
+        }.getOrDefault(-1)
         val nativeHeap = Debug.getNativeHeapAllocatedSize() / (1024L * 1024L)
         val system = ActivityManager.MemoryInfo()
-        am.getMemoryInfo(system)
+        (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(system)
         val avail = system.availMem / (1024L * 1024L)
-        val summary = "RAM ($stage): PSS ${pss} MB • Native ${nativeHeap} MB • Tersedia ${avail} MB"
+        val procStats = runCatching {
+            File("/proc/self/status").useLines { lines ->
+                lines.filter { it.startsWith("VmRSS:") ||
+                        it.startsWith("RssAnon:") ||
+                        it.startsWith("RssFile:") ||
+                        it.startsWith("VmSwap:") }
+                    .associate { line ->
+                        val parts = line.trim().split(Regex("\\s+"))
+                        parts.first().removeSuffix(":") to
+                            ((parts.getOrNull(1)?.toLongOrNull() ?: 0L) / 1024L)
+                    }
+            }
+        }.getOrDefault(emptyMap())
+        val rss = procStats["VmRSS"] ?: -1L
+        val anon = procStats["RssAnon"] ?: -1L
+        val filePages = procStats["RssFile"] ?: -1L
+        val swap = procStats["VmSwap"] ?: -1L
+        val summary = "RAM ($stage): PSS ${pss} MB • RSS ${rss} MB • Native ${nativeHeap} MB" +
+            "\\nAnon ${anon} MB • Fail ${filePages} MB • Swap ${swap} MB • Tersedia ${avail} MB"
         memoryDiagnostic.text = summary
-        Log.i("IzzAI-Memory", summary)
+        Log.i("IzzAI-Memory", summary.replace("\\n", " | "))
+        // Keep a short on-device timeline for comparison across app restarts.
+        runCatching {
+            val trace = File(filesDir, "memory-diagnostics.txt")
+            if (trace.length() > 48_000) trace.writeText("")
+            trace.appendText("${System.currentTimeMillis()} pid=${Process.myPid()} " +
+                summary.replace("\\n", " | ") + "\\n")
+        }
     }
 
     override fun onResume() {
